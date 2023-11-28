@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
@@ -8,6 +10,7 @@ import 'package:khelo_app/constants/controller_tag_constants.dart';
 import 'package:khelo_app/constants/string_constants.dart';
 import 'package:khelo_app/constants/style_constants.dart';
 import 'package:khelo_app/models/games_model.dart';
+import 'package:khelo_app/models/users_model.dart';
 import 'package:khelo_app/screens/dashboard/dashboard_controller.dart';
 import 'package:khelo_app/utils/gradient_text.dart';
 import 'package:khelo_app/utils/size_config.dart';
@@ -33,11 +36,11 @@ class DashboardScreen extends StatelessWidget {
         SizedBox(
           height: SizeConfig.heightMultiplier * 3,
         ),
-        jackpotCounter(),
+        jackpotCounter(controller),
         SizedBox(
           height: SizeConfig.heightMultiplier * 2,
         ),
-        liveWithdrawalSection(),
+        liveWithdrawalSection(controller),
         SizedBox(
           height: SizeConfig.heightMultiplier * 2,
         ),
@@ -45,9 +48,19 @@ class DashboardScreen extends StatelessWidget {
         SizedBox(
           height: SizeConfig.heightMultiplier * 4,
         ),
-        Align(
-            alignment: Alignment.centerLeft,
-            child: gamesWidget(controller))
+        // Align(
+        //     alignment: Alignment.centerLeft,
+        //     child: gamesWidget(controller)),
+        gamesTitle(),
+        ListView.builder(
+          itemCount: controller.gameCategoriesList.length,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemBuilder: (context,index){
+          return Align(
+              alignment: Alignment.centerLeft,
+              child: gamesWidget(controller.gameCategoriesList[index], controller, index));
+        })
       ],
     );
   }
@@ -59,7 +72,7 @@ class DashboardScreen extends StatelessWidget {
         CarouselSlider.builder(
           itemCount: controller.sliderImgList.length,
           itemBuilder: (BuildContext context, int index, int pageViewIndex) {
-            return Container(
+            return SizedBox(
               height: SizeConfig.heightMultiplier * 22,
               width: double.infinity,
               child: Image.asset(
@@ -182,7 +195,7 @@ class DashboardScreen extends StatelessWidget {
       );
 
   //jackpot counter
-  Widget jackpotCounter() {
+  Widget jackpotCounter(DashboardController controller) {
     return Stack(
       children: [
         Image.asset(
@@ -193,18 +206,16 @@ class DashboardScreen extends StatelessWidget {
         SizedBox(
           height: SizeConfig.heightMultiplier * 17,
           width: SizeConfig.widthMultiplier * 100,
-          child: Center(
-            child: Padding(
-              padding: EdgeInsets.only(
-                  left: SizeConfig.widthMultiplier * 10,
-                  top: SizeConfig.heightMultiplier * 2.5),
-              child: Text(
-                "1000000",
-                textAlign: TextAlign.start,
-                style: StyleConstants.h128PxStyleBold(
-                    color: AppColors.redDark, letterSpacing: 11),
-              ),
-            ),
+          child: Padding(
+            padding: EdgeInsets.only(
+                left: SizeConfig.widthMultiplier * 23.7,
+                top: SizeConfig.heightMultiplier * 7.0),
+            child: Obx(()=>Text(
+              controller.counter.value.toString(),
+              textAlign: TextAlign.start,
+              style: StyleConstants.h128PxStyleBold(
+                  color: AppColors.redDark, letterSpacing: 11),
+            ))
           ),
         ),
       ],
@@ -212,8 +223,8 @@ class DashboardScreen extends StatelessWidget {
   }
 
   //live withdrawal
-  Widget liveWithdrawalSection() {
-    return Column(
+  Widget liveWithdrawalSection(DashboardController controller) {
+    return Obx(() => Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -247,25 +258,76 @@ class DashboardScreen extends StatelessWidget {
                     AssetsConstants.withdrawalBoard,
                   ))),
           child: Padding(
-            padding: EdgeInsets.symmetric(vertical: SizeConfig.heightMultiplier * 1.5, horizontal: SizeConfig.widthMultiplier * 2.5),
-            child: GridView.builder(
-              itemCount: 4,
-                physics: const NeverScrollableScrollPhysics(),
+              padding: EdgeInsets.symmetric(vertical: SizeConfig.heightMultiplier * 1.5, horizontal: SizeConfig.widthMultiplier * 2.5),
+              child: CarouselSlider.builder(
+                itemCount: controller.usersListGrid.length,
+                itemBuilder: (BuildContext context, int index, int pageViewIndex) {
+                  return SizedBox(
+                    height: SizeConfig.heightMultiplier * 2,
+                    width: double.infinity,
+                      child: GridView.builder(
+                          itemCount: controller.tempList.length,
+                          physics: const NeverScrollableScrollPhysics(),
+                          scrollDirection: Axis.horizontal,
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            mainAxisExtent: 200,
+                          ),
+                          itemBuilder: (context, index){
+                            return usersItemWidget(controller.tempList[index]);
+                          })
+                  );
+                },
+                options: CarouselOptions(
+                  // aspectRatio: 2.0,
+                  height: SizeConfig.heightMultiplier * 30,
+                  viewportFraction: 1.0,
+                  enlargeCenterPage: true,
+                  onPageChanged: (int i, reason) {
+                    controller.usersCarsolIndex.value = i;
+
+                    controller.tempList.clear();
+                    if(controller.tempListStartIndex.value < controller.usersList.length && controller.tempListEndIndex.value < controller.usersList.length){
+                      controller.tempListStartIndex.value = controller.tempListEndIndex.value;
+                      controller.tempListEndIndex.value = controller.usersList.length < (controller.tempListStartIndex.value + 4) ? (controller.tempListStartIndex.value + 4): controller.usersList.length;
+                      for(int i = controller.tempListStartIndex.value ; i < controller.tempListEndIndex.value; i++){
+                        controller.tempList.add(UsersModel(userName: controller.usersList[i].userName, amount: controller.usersList[i].amount, time: controller.usersList[i].time));
+                      }
+                    }else{
+                      controller.tempListStartIndex.value = 0;
+                      controller.tempListEndIndex.value =  controller.usersList.length >= 4 ? 4 : controller.usersList.length;
+                      for(int i = controller.tempListStartIndex.value ; i < controller.tempListEndIndex.value; i++){
+                        controller.tempList.add(UsersModel(userName: controller.usersList[i].userName, amount: controller.usersList[i].amount, time: controller.usersList[i].time));
+                      }
+                    }
+
+                    log("Start: ${controller.tempListStartIndex.value.toString()}");
+                    log("End: ${controller.tempListEndIndex.value.toString()}");
+
+                  },
+                  autoPlayInterval: const Duration(seconds: 5),
+                  scrollDirection: Axis.horizontal,
+                  autoPlay: true,
+                ),
+              )/*GridView.builder(
+                itemCount: 8,
+                physics: const ScrollPhysics(),
+                scrollDirection: Axis.horizontal,
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
-                  mainAxisExtent: 72,
+                  mainAxisExtent: 200,
                 ),
                 itemBuilder: (context, index){
                   return usersItemWidget();
-                }),
+                }),*/
           ),
         )
       ],
-    );
+    ));
   }
 
   //user item widget
-  Widget usersItemWidget(){
+  Widget usersItemWidget(UsersModel model){
     return Row(
       children: [
         Container(
@@ -292,7 +354,7 @@ class DashboardScreen extends StatelessWidget {
                 text: TextSpan(
                   children: [
                     TextSpan(
-                      text: 'Aniket ',
+                      text: model.userName,
                     style: StyleConstants.h612PxStyleMedium(color: AppColors.white),
                     ),
                     TextSpan(
@@ -301,13 +363,13 @@ class DashboardScreen extends StatelessWidget {
 
                     ),
                     TextSpan(
-                      text: '2000',
+                      text: model.amount,
                       style: StyleConstants.h612PxStyleMedium(color: AppColors.white),
                     ),
                   ],
                 ),
               ),
-              Text("2 seconds ago",
+              Text("${model.time} seconds ago",
                 style: StyleConstants.h98PxStyleRegular(color: AppColors.white),
               ),
             ],
@@ -438,11 +500,8 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  //games
-  Widget gamesWidget(DashboardController controller){
+  Widget gamesTitle(){
     return Column(
-      // crossAxisAlignment: CrossAxisAlignment.start,
-      // mainAxisAlignment: MainAxisAlignment.start,
       children: [
         Padding(
           padding: EdgeInsets.only(right: SizeConfig.widthMultiplier * 50.0),
@@ -480,6 +539,14 @@ class DashboardScreen extends StatelessWidget {
         SizedBox(
           height: SizeConfig.heightMultiplier * 1.0,
         ),
+      ],
+    );
+  }
+
+  //games
+  Widget gamesWidget(GameCategoriesModel model, DashboardController controller, int itemIndex){
+    return Column(
+      children: [
         //most popular
         Row(
           children: [
@@ -495,7 +562,7 @@ class DashboardScreen extends StatelessWidget {
                   ),
                   SizedBox(width: SizeConfig.widthMultiplier * 2,),
                   Text(
-                    "${StringConstants.mostPopularTxt}(15)",
+                    "${model.categoryName}(${model.count})",
                     style: StyleConstants.h818PxStyleBold(color: AppColors.white),
                   ),
                 ],
@@ -504,10 +571,10 @@ class DashboardScreen extends StatelessWidget {
             // SizedBox(width: SizeConfig.widthMultiplier * 2,),
             Obx(() => GestureDetector(
               onTap: (){
-                if(controller.showMore.value == false){
-                  controller.showMore.value = true;
+                if(controller.showMoreList[itemIndex] == false){
+                  controller.showMoreList[itemIndex] = true;
                 }else{
-                  controller.showMore.value = false;
+                  controller.showMoreList[itemIndex] = false;
                 }
 
               },
@@ -528,18 +595,18 @@ class DashboardScreen extends StatelessWidget {
                     ),
                   ),
                   child: Center(
-                    child: Text(
-                      !controller.showMore.value ? StringConstants.showMoreTxt : StringConstants.hideTxt,
+                    child: controller.showMoreList.isNotEmpty ? Text(
+                      !controller.showMoreList[itemIndex] ? StringConstants.showMoreTxt : StringConstants.hideTxt,
                       style: StyleConstants.h710PxStyleBold(color: AppColors.white),
-                    ),
+                    ):const Text("Empty"),
                   )),
             ),)
           ],
         ),
         Obx(() => Padding(
           padding: EdgeInsets.symmetric(vertical: SizeConfig.heightMultiplier * 1.5, horizontal: SizeConfig.widthMultiplier * 2.5),
-          child: GridView.builder(
-              itemCount:controller.showMore.value ? controller.gamesList.length: 4,
+          child:controller.showMoreList.isNotEmpty ? GridView.builder(
+              itemCount: controller.showMoreList[itemIndex] ? model.gamesList.length: 4,
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -547,8 +614,8 @@ class DashboardScreen extends StatelessWidget {
                 mainAxisExtent: 175,
               ),
               itemBuilder: (context, index){
-                return gamesItemWidget(controller.gamesList[index]);
-              }),
+                return gamesItemWidget(model.gamesList[index]);
+              }): const Text("Empty"),
         ),)
       ],
     );
