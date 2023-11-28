@@ -309,17 +309,7 @@ class DashboardScreen extends StatelessWidget {
                   scrollDirection: Axis.horizontal,
                   autoPlay: true,
                 ),
-              )/*GridView.builder(
-                itemCount: 8,
-                physics: const ScrollPhysics(),
-                scrollDirection: Axis.horizontal,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisExtent: 200,
-                ),
-                itemBuilder: (context, index){
-                  return usersItemWidget();
-                }),*/
+              )
           ),
         )
       ],
